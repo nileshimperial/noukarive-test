@@ -4,12 +4,9 @@ import {color, t} from 'react-native-tailwindcss';
 import {Button} from './components/button';
 import {TextField} from './components/text-field';
 import {sendEmailApi} from './service';
+import {CONFIG} from './service/url';
 
 const fields = {
-  whom: {
-    placeHolder: 'To Whom',
-    disable: text => !text,
-  },
   subject: {
     placeHolder: 'Enter Subject',
     disable: text => !text,
@@ -20,21 +17,19 @@ const fields = {
     textAlignVertical: t.alignTop,
     paddingTop: t.pT2,
     disable: text => text.length < 3,
-    multiline: true
+    multiline: true,
   },
 };
 
 const fieldRelations = {
-  whom: "subject",
-  subject: "message",
-  message: "done"
-}
+  subject: 'message',
+  message: 'done',
+};
 
 class HomeScreen extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      whom: '',
       subject: '',
       apiMessage: '',
       isSending: false,
@@ -56,8 +51,6 @@ class HomeScreen extends React.Component {
   };
 
   allRefs = {};
-
-
 
   render() {
     const {apiMessage, isSending} = this.state;
@@ -85,7 +78,7 @@ class HomeScreen extends React.Component {
                 style={[paddingTop, height]}
                 disabled={isSending}
                 allRefs={this.allRefs}
-                getRef={(ref) => {
+                getRef={ref => {
                   this.allRefs[fieldKey] = ref;
                 }}
                 fieldRelations={fieldRelations}
@@ -106,7 +99,6 @@ class HomeScreen extends React.Component {
 
   resetState = () => {
     this.setState({
-      whom: '',
       subject: '',
       isSending: false,
       message: '',
@@ -115,13 +107,21 @@ class HomeScreen extends React.Component {
 
   sendEmail = callback => {
     this.updateState('isSending', true);
-    const {whom, subject, message} = this.state;
-    sendEmailApi({
-      to: whom,
-      subject,
-      message,
-    })
-      .then(response => this.handleSuccess(response, callback))
+    const {subject, message} = this.state;
+    const emailPromises = CONFIG.EMAILS.map(email =>
+      sendEmailApi({
+        to: email,
+        subject,
+        message,
+      }),
+    );
+    Promise.all(emailPromises)
+      .then(responses => {
+        if (responses.length > 0) {
+          responses.forEach(element => {
+            this.handleSuccess(element, callback)
+          });
+        }})
       .catch(error => this.handleError(error, callback));
   };
 
